@@ -32,3 +32,9 @@ and uses flutter_cached_network_image
 
 ## cai_js.html
 Pure html+jss to compare to browser behaviour.
+
+
+# How to use
+start both cai_server and cai_client.
+
+press buttons in the client and observe the debug console in the server
