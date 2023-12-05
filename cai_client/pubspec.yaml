@@ -34,6 +34,10 @@ dependencies:
     sdk: flutter
   http: ^1.1.2
 
+dependency_overrides:
+  flutter_cache_manager:
+    path: /Users/gian/repos/guest/fork/flutter_cache_manager/flutter_cache_manager/
+
 dev_dependencies:
   flutter_lints: ^3.0.0
   flutter_test:

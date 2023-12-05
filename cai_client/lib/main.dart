@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:cached_network_image/cached_network_image.dart';
 
+import 'package:flutter_cache_manager/flutter_cache_manager.dart' as fcm;
+
 void main() {
   runApp(MyApp());
 }
@@ -24,7 +26,9 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   DateTime lastUpdate = DateTime.now();
 
-  CachedNetworkImageProvider? imageProvider;
+  CachedNetworkImageProvider? imageProvider1;
+  CachedNetworkImageProvider? imageProvider2;
+  CachedNetworkImageProvider? imageProvider3;
 
   @override
   void initState() {
@@ -34,13 +38,17 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void setProvider() {
     setState(() {
-      imageProvider = CachedNetworkImageProvider(imageUrl);
+      imageProvider1 = CachedNetworkImageProvider("$imageUrl?size=150");
+      imageProvider2 = CachedNetworkImageProvider("$imageUrl?size=100");
+      imageProvider3 = CachedNetworkImageProvider("$imageUrl?size=50");
     });
   }
 
   void setProviderNull() {
     setState(() {
-      imageProvider = null;
+      imageProvider1 = null;
+      imageProvider2 = null;
+      imageProvider3 = null;
     });
   }
 
@@ -48,21 +56,15 @@ class _MyHomePageState extends State<MyHomePage> {
   final imageUrl = 'http://localhost:8080/getImage';
   final toggleReturnUrl = 'http://localhost:8080/toggle404';
 
-  void _clearCache() {
-    /// This alone does work, but throws away etag etc
-    ///
-    /// Also, we need to know the exact url
-    ///
-    /// Calls ImageCache.evict(CachedNetworkImage(imageUrl))
-    ///
-    //await CachedNetworkImage.evictFromCache(imageUrl);
+  void _clearImageCacheToForceRefresh() {
+    final allCachedKeys = fcm.DefaultCacheManager().getKeysFromMemory();
 
-    // Use the following to brute force clear all if you dont know the exact url
-    // PaintingBinding.instance.imageCache.clearLiveImages();
-    // PaintingBinding.instance.imageCache.clear();
-
-    // Use the following if you know tfluthe exact URL you want to refresh
-    PaintingBinding.instance.imageCache.evict(CachedNetworkImageProvider(imageUrl));
+    final imageCache = PaintingBinding.instance.imageCache;
+    print("Size before evict (expect 4): ${imageCache.currentSize}");
+    for (final key in allCachedKeys.where((url) => url.startsWith(imageUrl))) {
+      imageCache.evict(CachedNetworkImageProvider(key));
+    }
+    print("Size after evict (expect 1): ${imageCache.currentSize}");
   }
 
   @override
@@ -71,47 +73,66 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text('Image Viewer - $lastUpdate'),
       ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircleAvatar(
-            foregroundImage: imageProvider,
-            radius: 100,
-            onForegroundImageError: imageProvider == null
-                ? null
-                : (_, __) {
-                    // ⚡️ this is not called on 404
-                    CachedNetworkImage.evictFromCache(imageProvider!.url);
-                    setProviderNull();
-                  },
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () async {
-              await http.get(Uri.parse(changeUrl));
-              _clearCache();
-              setProvider();
-            },
-            child: const Text('Change Image. Aka upload different profile picture.'),
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () {
-              _clearCache();
-              setProvider();
-            },
-            child: const Text('Clear ImageCache without Image Change'),
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () {
-              http.get(Uri.parse(toggleReturnUrl));
-              _clearCache();
-              setProvider();
-            },
-            child: const Text('Toggle return nothing. Aka delete profile picture'),
-          ),
-        ],
+      body: SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            /// Unrelated image that should not be removed from ImageCache
+            CachedNetworkImage(imageUrl: "https://picsum.photos/536/354"),
+
+            /// Three versions of the same resource that should be removed together
+            CircleAvatar(
+              foregroundImage: imageProvider1,
+              radius: 150,
+            ),
+            CircleAvatar(
+              foregroundImage: imageProvider2,
+              radius: 100,
+            ),
+            CircleAvatar(
+              foregroundImage: imageProvider3,
+              radius: 50,
+            ),
+
+            ///
+            ///
+            ///
+            ///
+            ///
+            ///
+            ///
+            ///
+            ///
+            // ===================
+
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () async {
+                await http.get(Uri.parse(changeUrl));
+                _clearImageCacheToForceRefresh();
+                setProvider();
+              },
+              child: const Text('Change Image. Aka upload different profile picture.'),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                _clearImageCacheToForceRefresh();
+                setProvider();
+              },
+              child: const Text('Clear ImageCache without Image Change'),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                http.get(Uri.parse(toggleReturnUrl));
+                _clearImageCacheToForceRefresh();
+                setProvider();
+              },
+              child: const Text('Toggle return nothing. Aka delete profile picture'),
+            ),
+          ],
+        ),
       ),
     );
   }
