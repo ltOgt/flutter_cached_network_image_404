@@ -7,6 +7,7 @@
     - Quick Fix: `PaintingBinding.instance.imageCache.evict(CachedNetworkImageProvider(url), includeLive: true)`
 
 - flutter_cached_network_image does not clear its cache on 404, and does not surface the error to callbacks like `CircleAvatar.onForegroundImageError`
+  - https://github.com/Baseflow/flutter_cache_manager/pull/437
 
 
         
